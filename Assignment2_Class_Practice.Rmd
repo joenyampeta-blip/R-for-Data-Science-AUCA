@@ -1,0 +1,355 @@
+---
+title: "Assignment 2: Practice of Class Codes (R for Data Science)"
+author: "Manzi Joel (Student ID: 20252MBI024)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+Practice of the codes shared by the lecturer: <https://rpubs.com/Mapara_lee/1434996>.
+Part B practises the ggplot2 `geom_*()` functions given in class.
+
+# Part A: Class codes
+
+## 1. R as a calculator
+
+```{r}
+5 + 3; 10 / 4; 2^5; sqrt(81); log(100, base = 10)
+```
+
+## 2. Data structures
+
+### Vectors
+
+```{r}
+age <- c(20, 35, 32, 29)
+summary(age)
+age <- c(35, 24, 18, 24)
+mean(age)
+
+x <- c(TRUE, FALSE)          # logical
+class_g <- c("M", "F", "F", "M") # character
+x <- 9:29                    # integer
+x <- c(1 + 0i, 2 + 4i)       # complex
+class(x)
+```
+
+### Matrix
+
+```{r}
+(x <- matrix(1:6, nrow = 2, ncol = 3))
+(y <- matrix(1:6, nrow = 3, ncol = 2))
+x %*% y
+```
+
+### List and factor
+
+```{r}
+(x <- list(1, "a", TRUE, 1 + 4i))
+x <- factor(c("yes", "yes", "no", "yes", "no"))
+table(x)
+```
+
+### Missing values
+
+```{r}
+x <- c(1, 2, NA, 10, 3)
+is.na(x)
+
+x <- c(1, 2, NA, 4, NA, 5)
+y <- c("a", "b", NA, "d", NA, "f")
+good <- complete.cases(x, y)
+x[good]; y[good]
+```
+
+### Coercion
+
+```{r}
+sum(c(TRUE, TRUE, FALSE, FALSE, FALSE))
+class(c(1, "a", TRUE))
+```
+
+## 3. Data frame
+
+```{r}
+studentID  <- c(1, 2, 3, 4, 5)
+math_score <- c(12, 17, 10, 9, NA)
+gender     <- c("M", "F", "M", "M", "F")
+it_score   <- c(13, 18, 11, 10, 19)
+scoredata  <- data.frame(studentID, gender, math_score, it_score)
+scoredata
+```
+
+Data from keyboard (works only in interactive RStudio):
+
+```{r, eval=FALSE}
+data_class2 <- data.frame(height = numeric(0), weight = numeric(0), bmi = numeric(0))
+data_class2 <- edit(data_class2)
+```
+
+## 4. Data import and built-in data
+
+```{r}
+data_class <- read.table("data/class_data.txt", header = TRUE)
+variable.names(data_class)
+head(data_class)
+tail(data_class)
+data_class[10:20, ]
+summary(data_class$WEIGHT)
+length(data_class$WEIGHT)
+
+data("airquality")
+str(airquality)
+```
+
+## 5. Exploratory data analysis
+
+```{r}
+summary(data_class)
+apply(data_class, 2, sd)
+c(Mean = mean(data_class$HEIGHT), SD = sd(data_class$HEIGHT))
+c(Mean = mean(data_class$WEIGHT), SD = sd(data_class$WEIGHT))
+```
+
+### Categorical vs continuous (iris)
+
+```{r}
+by(iris$Petal.Length, iris$Species, mean)
+by(iris$Petal.Length, iris$Species, summary)
+boxplot(Sepal.Length ~ Species, data = iris,
+        main = "Comparison of categorical vs quantitative")
+```
+
+### Two categorical variables and Simpson's paradox
+
+```{r}
+ucba  <- data.frame(UCBAdmissions)
+cross <- xtabs(Freq ~ Gender + Admit, data = ucba)
+prop.table(cross, 1)          # overall: men admitted more
+
+cross2 <- xtabs(Freq ~ Gender + Admit, data = ucba[ucba$Dept == "F", ])
+prop.table(cross2, 1)         # in Dept F: women admitted more
+```
+
+### Bar charts
+
+```{r}
+dat <- read.table(text = "ProdA ProdB ProdC ProdD
+1 110 50 60 70
+2 120 50 80 65", header = TRUE)
+barplot(as.matrix(dat), beside = TRUE, col = c("red", "green"))
+```
+
+### Scatter plot, correlation and linear model
+
+```{r}
+plot(WEIGHT ~ HEIGHT, data = data_class)
+abline(lm(WEIGHT ~ HEIGHT, data = data_class), col = "red")
+lines(lowess(data_class$HEIGHT, data_class$WEIGHT), col = "blue")
+cor(data_class$HEIGHT, data_class$WEIGHT)
+
+data_lm <- lm(HEIGHT ~ WEIGHT, data = data_class)
+summary(data_lm)
+par(mfrow = c(2, 2)); plot(data_lm); par(mfrow = c(1, 1))
+
+hist(data_class$HEIGHT)
+hist(data_class$WEIGHT, col = "blue")
+```
+
+## 6. Data management
+
+### New variable (BMI)
+
+```{r}
+data_class$BMI <- round(data_class$WEIGHT / (data_class$HEIGHT / 100)^2, 2)
+head(data_class, 5)
+summary(data_class$BMI)
+stem(data_class$BMI, scale = 2)
+```
+
+### Dates
+
+```{r}
+today <- Sys.Date()
+format(today, format = "%B %d %Y")
+format(today, format = "%A")
+difftime(today, as.Date("1982-02-10"), units = "days")
+as.Date("2011-01-22") - as.Date("2004-02-13")
+```
+
+### Leadership data: missing values, categories, sorting, subsetting
+
+```{r}
+manager <- c(1, 2, 3, 4, 5)
+country <- c("US", "US", "UK", "UK", "UK")
+gender  <- c("M", "F", "F", "M", "F")
+age     <- c(32, 45, 25, 39, 99)
+q1 <- c(5, 3, 3, 3, 2); q2 <- c(4, 5, 5, 3, 2); q3 <- c(5, 2, 5, 4, 1)
+q4 <- c(5, 5, 5, NA, 2); q5 <- c(5, 5, 2, NA, 1)
+leadership <- data.frame(manager, country, gender, age, q1, q2, q3, q4, q5)
+
+leadership$age[leadership$age == 99] <- NA
+leadership$agecat[leadership$age > 75] <- "Elder"
+leadership$agecat[leadership$age >= 35 & leadership$age <= 75] <- "Middle Aged"
+leadership$agecat[leadership$age < 35] <- "Young"
+leadership
+
+na.omit(leadership)                          # listwise deletion
+leadership[order(leadership$age), ]          # sorting
+leadership[c("q1", "q2", "q3", "q4", "q5")]  # select variables
+subset(leadership, age >= 35 | age < 24, select = c(q1, q2, q3, q4, q5))
+leadership[leadership$gender == "M" & leadership$age > 30 & !is.na(leadership$age), ]
+```
+
+### Merging
+
+```{r}
+extra <- data.frame(manager = 1:5, salary = c(5000, 6200, 4100, 5800, 7000))
+merge(leadership, extra, by = "manager")      # horizontal
+rbind(leadership[1:2, ], leadership[4, ])     # vertical
+```
+
+# Part B: ggplot2 geom functions
+
+Data: `singer` from the **lattice** package, as used in class. It has the height (in inches) of 235 singers in a choir, and their `voice.part` (Bass, Tenor, Alto, Soprano).
+
+```{r}
+library(ggplot2)
+library(lattice)
+data(singer)
+str(singer)
+summary(singer$height)
+```
+
+### geom_bar()
+
+**Aim:** count how many singers are in each voice part. `geom_bar()` counts the rows for us.
+
+```{r}
+ggplot(singer, aes(voice.part)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Number of singers per voice part", x = "Voice part", y = "Count")
+```
+
+**What we see:** Bass 1 (39) and Soprano 1 (36) are the biggest groups. Tenor 1 and Tenor 2 are the smallest (21 each).
+
+### geom_boxplot()
+
+**Aim:** compare height between voice parts. A box plot shows the median, the middle 50% (the box) and outliers.
+
+```{r}
+ggplot(singer, aes(voice.part, height)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Height by voice part", x = "Voice part", y = "Height (inches)")
+```
+
+**What we see:** height goes down from left to right. Bass 2 has the highest median (72 in), Soprano 2 the lowest (64 in). Lower voices belong to taller singers.
+
+### geom_density()
+
+**Aim:** show the shape of the height distribution as a smooth curve.
+
+```{r}
+ggplot(singer, aes(height)) +
+  geom_density(fill = "orange", alpha = 0.5) +
+  labs(title = "Density of singer height", x = "Height (inches)", y = "Density")
+```
+
+**What we see:** the curve has two bumps, near 65 and 70 inches. This suggests two groups mixed together (women in Alto/Soprano and men in Bass/Tenor).
+
+### geom_histogram() with geom_vline() and geom_rug()
+
+**Aim:** show how many singers fall in each height range. `geom_vline()` marks the mean, and `geom_rug()` puts a small tick for each singer under the x-axis.
+
+```{r}
+ggplot(singer, aes(height)) +
+  geom_histogram(binwidth = 2, fill = "grey60", colour = "white") +
+  geom_vline(xintercept = mean(singer$height), colour = "red", linewidth = 1) +
+  geom_rug() +
+  labs(title = "Histogram of height (red line = mean)",
+       x = "Height (inches)", y = "Number of singers")
+```
+
+**What we see:** heights go from 60 to 76 inches. The mean is 67.3 inches. Most singers are between 64 and 72 inches.
+
+### geom_jitter() and geom_hline()
+
+**Aim:** show every singer as a point. Many singers have the same height, so `geom_jitter()` moves points a little so they do not cover each other. `geom_hline()` draws the overall mean.
+
+```{r}
+ggplot(singer, aes(voice.part, height)) +
+  geom_jitter(width = 0.2, colour = "darkgreen") +
+  geom_hline(yintercept = mean(singer$height), linetype = "dashed", colour = "red") +
+  labs(title = "Jittered heights (dashed line = overall mean)",
+       x = "Voice part", y = "Height (inches)")
+```
+
+**What we see:** Bass and Tenor points are mostly above the mean line. Alto and Soprano points are mostly below it.
+
+### geom_violin()
+
+**Aim:** compare the full shape of height in each voice part. A wide part of the violin means many singers have that height. A small box plot inside shows the median.
+
+```{r}
+ggplot(singer, aes(voice.part, height)) +
+  geom_violin(fill = "plum") +
+  geom_boxplot(width = 0.1) +
+  labs(title = "Violin plot of height by voice part",
+       x = "Voice part", y = "Height (inches)")
+```
+
+**What we see:** the same pattern as the box plot, but we also see where singers are most common. Tenor 1 and Alto 1 have the widest spread of heights (12 inches from shortest to tallest).
+
+### geom_text()
+
+**Aim:** put the exact value on top of each bar, so the reader does not need to guess.
+
+```{r}
+means <- aggregate(height ~ voice.part, data = singer, FUN = mean)
+ggplot(means, aes(voice.part, height)) +
+  geom_col(fill = "skyblue") +
+  geom_text(aes(label = round(height, 1)), vjust = -0.4) +
+  labs(title = "Mean height per voice part", x = "Voice part", y = "Mean height (inches)")
+```
+
+**What we see:** mean height falls step by step from about 71 inches (Bass) to about 64 inches (Soprano).
+
+### geom_line() and geom_point()
+
+**Aim:** join the mean heights with a line to show the trend across voice parts. `geom_point()` marks each mean.
+
+```{r}
+ggplot(means, aes(voice.part, height, group = 1)) +
+  geom_line(colour = "blue") +
+  geom_point(size = 3) +
+  labs(title = "Mean height across voice parts", x = "Voice part", y = "Mean height (inches)")
+```
+
+**What we see:** a clear downward trend. The biggest drop is between Tenor 1 and Alto 2, which is where the choir moves from male to female voices.
+
+### geom_point() and geom_smooth()
+
+**Aim:** check the relationship between two numeric variables. Here we use the class height and weight data. `geom_smooth(method = "lm")` adds a straight regression line with its confidence band.
+
+```{r}
+ggplot(data_class, aes(HEIGHT, WEIGHT)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Weight vs height (class data)", x = "Height (cm)", y = "Weight (kg)")
+```
+
+**What we see:** the line goes up a little, so taller students tend to be a bit heavier. But points are very spread out (r = 0.27), so the relationship is weak.
+
+## Conclusion
+
+- Taller singers sing lower parts (Bass, Tenor). Shorter singers sing higher parts (Alto, Soprano).
+- The height distribution has two peaks, because the choir has both men and women.
+- In the class data, height and weight have a weak positive relationship (r = 0.27).
+- Each `geom_*()` function shows the data in a different way. Choosing the right one depends on the question we want to answer.
