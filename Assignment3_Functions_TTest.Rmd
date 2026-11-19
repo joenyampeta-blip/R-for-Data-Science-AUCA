@@ -1,0 +1,281 @@
+---
+title: "Assignment 3: Own Functions for Summary Statistics and Two-Sample t-Test"
+author: "Manzi Joel (Student ID: 20252MBI024)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## 1. Aim
+
+Class exercises:
+
+1. Make functions that calculate summary statistics, and apply them to a variable to show that they work.
+2. Make a function that calculates a two-sample t-test, and apply it to data.
+
+All functions below use only basic R operations (`sum()`, `length()`, `sqrt()`, `sort()`).
+At the end of each part, we compare our results with R's built-in functions to show they are correct.
+
+## 2. Data
+
+We use the built-in `mtcars` data (32 cars).
+
+- `mpg`: miles per gallon (fuel efficiency)
+- `am`: transmission type (0 = automatic, 1 = manual)
+
+```{r}
+data(mtcars)
+head(mtcars[, c("mpg", "am")])
+```
+
+# Part A: Summary statistics functions
+
+## 3. Writing the functions
+
+```{r}
+# Mean: sum of values divided by the number of values
+my_mean <- function(x) {
+  x <- x[!is.na(x)]
+  sum(x) / length(x)
+}
+
+# Median: middle value of the sorted data
+my_median <- function(x) {
+  x <- sort(x[!is.na(x)])
+  n <- length(x)
+  if (n %% 2 == 1) {
+    x[(n + 1) / 2]
+  } else {
+    (x[n / 2] + x[n / 2 + 1]) / 2
+  }
+}
+
+# Mode: the value that appears most often
+my_mode <- function(x) {
+  x <- x[!is.na(x)]
+  counts <- table(x)
+  as.numeric(names(counts)[counts == max(counts)])
+}
+
+# Sample variance: sum of squared differences from the mean, divided by (n - 1)
+my_var <- function(x) {
+  x <- x[!is.na(x)]
+  sum((x - my_mean(x))^2) / (length(x) - 1)
+}
+
+# Standard deviation: square root of the variance
+my_sd <- function(x) {
+  sqrt(my_var(x))
+}
+
+# Range: maximum minus minimum
+my_range <- function(x) {
+  x <- sort(x[!is.na(x)])
+  x[length(x)] - x[1]
+}
+
+# Quantile (same method as R's default, type 7)
+my_quantile <- function(x, p) {
+  x <- sort(x[!is.na(x)])
+  n <- length(x)
+  h <- (n - 1) * p + 1
+  lower <- floor(h)
+  upper <- ceiling(h)
+  x[lower] + (h - lower) * (x[upper] - x[lower])
+}
+
+# Interquartile range: Q3 minus Q1
+my_iqr <- function(x) {
+  my_quantile(x, 0.75) - my_quantile(x, 0.25)
+}
+
+# Coefficient of variation (%): how big the SD is compared to the mean
+my_cv <- function(x) {
+  my_sd(x) / my_mean(x) * 100
+}
+
+# One function that returns all summary statistics together
+my_summary <- function(x) {
+  x <- x[!is.na(x)]
+  sorted <- sort(x)
+  data.frame(
+    n      = length(x),
+    mean   = my_mean(x),
+    median = my_median(x),
+    sd     = my_sd(x),
+    var    = my_var(x),
+    min    = sorted[1],
+    Q1     = my_quantile(x, 0.25),
+    Q3     = my_quantile(x, 0.75),
+    max    = sorted[length(sorted)],
+    range  = my_range(x),
+    IQR    = my_iqr(x),
+    CV_pct = my_cv(x)
+  )
+}
+```
+
+## 4. Applying the functions to a variable
+
+We apply the functions to `mpg`.
+
+```{r}
+round(my_summary(mtcars$mpg), 3)
+my_mode(mtcars$mpg)
+```
+
+The mode returns more than one value because several `mpg` values appear twice.
+
+## 5. Check against R's built-in functions
+
+```{r}
+check <- data.frame(
+  statistic = c("mean", "median", "variance", "sd", "Q1", "Q3", "IQR", "range"),
+  my_function = c(my_mean(mtcars$mpg), my_median(mtcars$mpg), my_var(mtcars$mpg),
+                  my_sd(mtcars$mpg), my_quantile(mtcars$mpg, 0.25),
+                  my_quantile(mtcars$mpg, 0.75), my_iqr(mtcars$mpg),
+                  my_range(mtcars$mpg)),
+  built_in = c(mean(mtcars$mpg), median(mtcars$mpg), var(mtcars$mpg),
+               sd(mtcars$mpg), quantile(mtcars$mpg, 0.25),
+               quantile(mtcars$mpg, 0.75), IQR(mtcars$mpg),
+               diff(range(mtcars$mpg)))
+)
+check$same <- abs(check$my_function - check$built_in) < 1e-10
+check
+```
+
+All values are the same, so our functions work. They also work on another variable and with missing values:
+
+```{r}
+x_with_na <- c(mtcars$hp, NA)
+round(my_summary(x_with_na), 3)
+```
+
+# Part B: Two-sample t-test function
+
+## 6. Theory
+
+We want to know if the means of two independent groups are different.
+
+- H0: mean of group 1 = mean of group 2
+- H1: mean of group 1 is not equal to mean of group 2
+
+Our function does two versions:
+
+- **Welch t-test** (default): does not assume the two groups have equal variance.
+  - t = (mean1 - mean2) / sqrt(s1²/n1 + s2²/n2)
+  - degrees of freedom from the Welch-Satterthwaite formula
+- **Pooled (Student) t-test**: assumes equal variance.
+  - pooled variance sp² = ((n1 - 1)s1² + (n2 - 1)s2²) / (n1 + n2 - 2)
+  - t = (mean1 - mean2) / sqrt(sp² (1/n1 + 1/n2)), df = n1 + n2 - 2
+
+The p-value comes from the t distribution (`pt()`), and the 95% confidence interval uses `qt()`.
+
+## 7. Writing the function
+
+```{r}
+my_t_test <- function(x, y, var_equal = FALSE, conf_level = 0.95) {
+  x <- x[!is.na(x)]
+  y <- y[!is.na(y)]
+  n1 <- length(x); n2 <- length(y)
+  m1 <- my_mean(x); m2 <- my_mean(y)
+  v1 <- my_var(x);  v2 <- my_var(y)
+
+  if (var_equal) {
+    sp2 <- ((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2)
+    se  <- sqrt(sp2 * (1 / n1 + 1 / n2))
+    df  <- n1 + n2 - 2
+    method <- "Two-sample t-test (pooled, equal variances)"
+  } else {
+    se <- sqrt(v1 / n1 + v2 / n2)
+    df <- (v1 / n1 + v2 / n2)^2 /
+          ((v1 / n1)^2 / (n1 - 1) + (v2 / n2)^2 / (n2 - 1))
+    method <- "Welch two-sample t-test (unequal variances)"
+  }
+
+  t_stat  <- (m1 - m2) / se
+  p_value <- 2 * pt(-abs(t_stat), df)
+  t_crit  <- qt(1 - (1 - conf_level) / 2, df)
+  ci      <- (m1 - m2) + c(-1, 1) * t_crit * se
+
+  result <- list(method = method, mean_x = m1, mean_y = m2,
+                 difference = m1 - m2, t = t_stat, df = df,
+                 p_value = p_value, conf_int = ci, conf_level = conf_level)
+  class(result) <- "my_ttest"
+  result
+}
+
+# Print method so the result is easy to read
+print.my_ttest <- function(r, ...) {
+  cat(r$method, "\n")
+  cat("Mean of x:", round(r$mean_x, 4), " Mean of y:", round(r$mean_y, 4), "\n")
+  cat("Difference (x - y):", round(r$difference, 4), "\n")
+  cat("t =", round(r$t, 4), ", df =", round(r$df, 4),
+      ", p-value =", signif(r$p_value, 4), "\n")
+  cat(r$conf_level * 100, "% confidence interval: [",
+      round(r$conf_int[1], 4), ",", round(r$conf_int[2], 4), "]\n")
+  cat(ifelse(r$p_value < 0.05,
+             "Decision: reject H0 at the 5% level (the means are different).",
+             "Decision: do not reject H0 at the 5% level."), "\n")
+  invisible(r)
+}
+```
+
+## 8. Applying the function to data
+
+**Question:** do manual cars and automatic cars have different fuel efficiency (`mpg`)?
+
+```{r}
+manual    <- mtcars$mpg[mtcars$am == 1]
+automatic <- mtcars$mpg[mtcars$am == 0]
+
+boxplot(mpg ~ factor(am, labels = c("Automatic", "Manual")), data = mtcars,
+        col = c("lightblue", "orange"), xlab = "Transmission",
+        ylab = "Miles per gallon", main = "MPG by transmission type")
+```
+
+```{r}
+welch  <- my_t_test(manual, automatic)
+welch
+
+pooled <- my_t_test(manual, automatic, var_equal = TRUE)
+pooled
+```
+
+## 9. Check against R's `t.test()`
+
+```{r}
+r_welch  <- t.test(manual, automatic)
+r_pooled <- t.test(manual, automatic, var.equal = TRUE)
+
+data.frame(
+  test     = c("Welch", "Welch", "Welch", "Pooled", "Pooled", "Pooled"),
+  value    = c("t", "df", "p-value", "t", "df", "p-value"),
+  my_func  = c(welch$t, welch$df, welch$p_value,
+               pooled$t, pooled$df, pooled$p_value),
+  t_test   = c(r_welch$statistic, r_welch$parameter, r_welch$p.value,
+               r_pooled$statistic, r_pooled$parameter, r_pooled$p.value)
+)
+```
+
+Our function gives the same t, degrees of freedom and p-value as `t.test()`.
+
+## 10. Interpretation
+
+- Manual cars have a mean of `r round(welch$mean_x, 2)` mpg. Automatic cars have a mean of `r round(welch$mean_y, 2)` mpg.
+- The difference is `r round(welch$difference, 2)` mpg (Welch t = `r round(welch$t, 2)`, df = `r round(welch$df, 1)`, p = `r signif(welch$p_value, 3)`).
+- The p-value is below 0.05, so we reject H0. Manual cars in this data travel more miles per gallon than automatic cars.
+- The 95% confidence interval for the difference is `r round(welch$conf_int[1], 2)` to `r round(welch$conf_int[2], 2)` mpg. It does not include 0, which agrees with the test.
+- Note: this shows a difference, not a cause. Manual cars in this data are also lighter, which can explain part of the difference (see Assignment 4).
+
+## 11. Conclusion
+
+- We wrote our own functions for mean, median, mode, variance, SD, quantiles, range, IQR and CV, plus one `my_summary()` function. They give the same results as R's built-in functions.
+- We wrote our own two-sample t-test function (Welch and pooled). It gives the same results as `t.test()`.

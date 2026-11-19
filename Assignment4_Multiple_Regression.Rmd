@@ -1,0 +1,161 @@
+---
+title: "Assignment 4: Multiple Linear Regression"
+author: "Manzi Joel (Student ID: 20252MBI024)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## 1. Aim
+
+Homework: find a data set on which we can fit a multiple linear regression, and interpret the results.
+
+**Question:** which car features explain fuel efficiency (miles per gallon)? And, once we control for weight and power, do manual cars still use less fuel than automatic cars?
+
+## 2. Data
+
+We use the built-in `mtcars` data. It has 32 cars from the 1974 *Motor Trend* magazine.
+
+| Variable | Meaning | Role |
+|---|---|---|
+| `mpg` | Miles per gallon | Response (Y) |
+| `wt` | Weight (1000 lbs) | Predictor |
+| `hp` | Gross horsepower | Predictor |
+| `am` | Transmission (0 = automatic, 1 = manual) | Predictor (dummy) |
+
+```{r}
+data(mtcars)
+cars <- mtcars[, c("mpg", "wt", "hp", "am")]
+str(cars)
+summary(cars)
+```
+
+## 3. Exploring the data
+
+```{r}
+round(cor(cars), 2)
+pairs(cars, col = ifelse(cars$am == 1, "orange", "steelblue"), pch = 19,
+      main = "Scatter plot matrix (orange = manual, blue = automatic)")
+```
+
+- `mpg` has a strong negative correlation with `wt` and `hp`: heavier and more powerful cars use more fuel.
+- `mpg` has a positive correlation with `am`: manual cars seem to use less fuel.
+- But `am` is also correlated with `wt`: manual cars are lighter. So we need a model with all variables together to separate their effects.
+
+## 4. Fitting the model
+
+The model is:
+
+mpg = b0 + b1·wt + b2·hp + b3·am + error
+
+```{r}
+fit <- lm(mpg ~ wt + hp + am, data = cars)
+summary(fit)
+confint(fit)
+```
+
+```{r include=FALSE}
+s  <- summary(fit)
+b  <- coef(fit)
+p  <- s$coefficients[, 4]
+fs <- s$fstatistic
+f_p <- pf(fs[1], fs[2], fs[3], lower.tail = FALSE)
+```
+
+## 5. Interpretation of the results
+
+**Overall model**
+
+- F = `r round(fs[1], 2)` on `r fs[2]` and `r fs[3]` df, p = `r signif(f_p, 3)`. The model is significant: at least one predictor explains `mpg`.
+- R² = `r round(s$r.squared, 3)`. The model explains about `r round(100 * s$r.squared)`% of the variation in fuel efficiency. Adjusted R² = `r round(s$adj.r.squared, 3)`.
+- Residual standard error = `r round(s$sigma, 2)` mpg. This is the typical size of a prediction error.
+
+**Coefficients** (each one holds the other variables constant)
+
+- **Intercept (`r round(b[1], 2)`):** the predicted mpg for an automatic car with weight 0 and 0 hp. This is not realistic, so it only fixes the position of the line.
+- **Weight (`r round(b["wt"], 2)`, p = `r signif(p["wt"], 3)`):** each extra 1000 lbs reduces fuel efficiency by about `r round(abs(b["wt"]), 2)` mpg. This is significant.
+- **Horsepower (`r round(b["hp"], 4)`, p = `r signif(p["hp"], 3)`):** each extra 1 hp reduces mpg by about `r round(abs(b["hp"]), 3)`. So 100 extra hp reduce mpg by about `r round(abs(b["hp"]) * 100, 1)`. This is significant.
+- **Transmission (`r round(b["am"], 2)`, p = `r signif(p["am"], 3)`):** a manual car gets about `r round(b["am"], 2)` mpg more than an automatic car with the same weight and power. But p > 0.05, so this difference is **not significant**. The 95% confidence interval (`r round(confint(fit)["am", 1], 2)` to `r round(confint(fit)["am", 2], 2)`) includes 0.
+
+**Main finding:** in a simple comparison (Assignment 3), manual cars had much better mpg. After we control for weight and horsepower, the transmission effect becomes small and not significant. Most of the difference comes from manual cars being lighter and less powerful, not from the gearbox itself.
+
+## 6. Do we need `am`? (comparing models)
+
+```{r}
+fit_small <- lm(mpg ~ wt + hp, data = cars)
+anova(fit_small, fit)
+```
+
+The F-test p-value is above 0.05, so adding `am` does not improve the model significantly. A model with only `wt` and `hp` is almost as good.
+
+## 7. Regression diagnostics
+
+A linear regression assumes: a linear relationship, independent errors, normal errors, constant variance, and no strong multicollinearity.
+
+```{r fig.height=7}
+par(mfrow = c(2, 2))
+plot(fit)
+par(mfrow = c(1, 1))
+```
+
+- **Residuals vs Fitted:** points are mostly spread around 0, with a small curve. The linear model is acceptable, but a slight curve suggests the effect of `hp` or `wt` may not be fully straight.
+- **Normal Q-Q:** points are close to the line, with a few cars at the top end.
+- **Scale-Location:** no strong pattern, so the variance is roughly constant.
+- **Residuals vs Leverage:** no point is outside Cook's distance of 1, so no single car controls the model.
+
+**Normality test of residuals**
+
+```{r}
+shapiro.test(residuals(fit))
+```
+
+p > 0.05, so we do not reject normality of the residuals.
+
+**Multicollinearity (VIF)**
+
+VIF = 1 / (1 - R²), where R² comes from regressing each predictor on the other predictors. A VIF above 5 (or 10) is a warning sign.
+
+```{r}
+predictors <- c("wt", "hp", "am")
+vif <- sapply(predictors, function(v) {
+  others <- setdiff(predictors, v)
+  r2 <- summary(lm(reformulate(others, v), data = cars))$r.squared
+  1 / (1 - r2)
+})
+round(vif, 2)
+```
+
+All VIF values are below 5, so multicollinearity is not a serious problem.
+
+**Influential cars**
+
+```{r}
+cd <- cooks.distance(fit)
+head(sort(cd, decreasing = TRUE), 3)
+```
+
+These are the cars with the most influence, but all are below 1.
+
+## 8. Using the model for prediction
+
+Predicted mpg for a manual car that weighs 3000 lbs and has 150 hp:
+
+```{r}
+new_car <- data.frame(wt = 3, hp = 150, am = 1)
+predict(fit, new_car, interval = "prediction")
+```
+
+## 9. Conclusion
+
+- The model `mpg ~ wt + hp + am` explains about `r round(100 * s$r.squared)`% of the variation in fuel efficiency.
+- Weight and horsepower are the important predictors. Both reduce mpg.
+- Transmission type is not significant once weight and horsepower are in the model.
+- The diagnostic checks show the model assumptions are acceptable. The small curve in the residual plot suggests that a non-linear term (for example `hp²`) could be tested in further work.
+- Limits: only 32 cars, all from 1973-74, so the results may not apply to modern cars.
