@@ -1,4 +1,4 @@
-# Creates the sample data files used in Assignment 1.
+# Creates the sample data files used in the data import project.
 # Run once from the project folder:  source("data/make_sample_data.R")
 # It writes the same small student dataset into many formats,
 # so we can practise importing each format in R.

@@ -1,5 +1,5 @@
 ---
-title: "Assignment 2: Practice of Class Codes (R for Data Science)"
+title: "Practice of Class Codes and ggplot2 (R for Data Science)"
 author: "Manzi Joel (Student ID: 20252MBI024)"
 date: "`r Sys.Date()`"
 output:

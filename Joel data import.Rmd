@@ -1,5 +1,5 @@
 ---
-title: "Assignment 1: Installing Packages and Importing Data from Different Sources"
+title: "Data Import: Installing Packages and Importing Data from Different Sources"
 author: "Manzi Joel (Student ID: 20252MBI024)"
 date: "`r Sys.Date()`"
 output:

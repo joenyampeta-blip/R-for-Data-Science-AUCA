@@ -1,5 +1,5 @@
 ---
-title: "Assignment 3: Own Functions for Summary Statistics and Two-Sample t-Test"
+title: "Functions in R: Summary Statistics and Two-Sample t-Test"
 author: "Manzi Joel (Student ID: 20252MBI024)"
 date: "`r Sys.Date()`"
 output:
@@ -273,7 +273,7 @@ Our function gives the same t, degrees of freedom and p-value as `t.test()`.
 - The difference is `r round(welch$difference, 2)` mpg (Welch t = `r round(welch$t, 2)`, df = `r round(welch$df, 1)`, p = `r signif(welch$p_value, 3)`).
 - The p-value is below 0.05, so we reject H0. Manual cars in this data travel more miles per gallon than automatic cars.
 - The 95% confidence interval for the difference is `r round(welch$conf_int[1], 2)` to `r round(welch$conf_int[2], 2)` mpg. It does not include 0, which agrees with the test.
-- Note: this shows a difference, not a cause. Manual cars in this data are also lighter, which can explain part of the difference (see Assignment 4).
+- Note: this shows a difference, not a cause. Manual cars in this data are also lighter, which can explain part of the difference (see `multiple_regression.Rmd`).
 
 ## 11. Conclusion
 

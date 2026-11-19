@@ -1,5 +1,5 @@
 ---
-title: "Assignment 4: Multiple Linear Regression"
+title: "Multiple Linear Regression"
 author: "Manzi Joel (Student ID: 20252MBI024)"
 date: "`r Sys.Date()`"
 output:
@@ -84,7 +84,7 @@ f_p <- pf(fs[1], fs[2], fs[3], lower.tail = FALSE)
 - **Horsepower (`r round(b["hp"], 4)`, p = `r signif(p["hp"], 3)`):** each extra 1 hp reduces mpg by about `r round(abs(b["hp"]), 3)`. So 100 extra hp reduce mpg by about `r round(abs(b["hp"]) * 100, 1)`. This is significant.
 - **Transmission (`r round(b["am"], 2)`, p = `r signif(p["am"], 3)`):** a manual car gets about `r round(b["am"], 2)` mpg more than an automatic car with the same weight and power. But p > 0.05, so this difference is **not significant**. The 95% confidence interval (`r round(confint(fit)["am", 1], 2)` to `r round(confint(fit)["am", 2], 2)`) includes 0.
 
-**Main finding:** in a simple comparison (Assignment 3), manual cars had much better mpg. After we control for weight and horsepower, the transmission effect becomes small and not significant. Most of the difference comes from manual cars being lighter and less powerful, not from the gearbox itself.
+**Main finding:** in a simple comparison (`functions_and_ttest.Rmd`), manual cars had much better mpg. After we control for weight and horsepower, the transmission effect becomes small and not significant. Most of the difference comes from manual cars being lighter and less powerful, not from the gearbox itself.
 
 ## 6. Do we need `am`? (comparing models)
 
