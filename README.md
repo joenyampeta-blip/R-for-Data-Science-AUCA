@@ -14,8 +14,6 @@ Student: **Manzi Joel** (ID: 20252MBI024)
 | `multiple_regression.Rmd` | Multiple linear regression on `mtcars`, with interpretation and regression diagnostics. |
 | `data/` | Sample data files used in the projects. |
 
-Each `.Rmd` file has a matching `.html` file with the results. Open the `.html` file to see the output without R.
-
 ## How to run
 
 1. Open the folder in RStudio (R 4.2 or newer).
