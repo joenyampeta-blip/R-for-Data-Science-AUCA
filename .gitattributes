@@ -1,2 +1,4 @@
 # Hide the Languages bar on GitHub
 * linguist-vendored
+* linguist-detectable=false
+*.html linguist-generated
